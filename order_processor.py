@@ -13,6 +13,7 @@ class OrderState:
     next_expected_version: int = 1
     pending_events: dict[int, OrderEvent] = field(default_factory=dict)
     history: list[OrderEvent] = field(default_factory=list)
+    last_fencing_token: int= 0
     
     def receive_event(self, event: OrderEvent):
         if event.order_id != self.order_id:
@@ -44,6 +45,14 @@ class OrderState:
         while self.next_expected_version in self.pending_events:
             event = self.pending_events.pop(self.next_expected_version)
             self.apply_event(event)
+    
+    def update_with_fencing_token(self, worker_name, token, status):
+        if token <= self.last_fencing_token:
+            print(f"Rejected update from worker {worker_name} with token {token}. Last fencing token is {self.last_fencing_token}.")
+            return
+        self.last_fencing_token = token
+        self.current_status = status
+        print(f"Accepted update from worker {worker_name} with token {token}. Order {self.order_id} is now {status}.")
 
     def print_state(self):
         print(f"\nCurrent order state:")
@@ -81,8 +90,23 @@ def missing_event_test():
     
     order.print_state()
     
+def stale_worker_test():
+    print("\n--- Stale Worker Test ---")
+    order = OrderState(order_id="order-3")
+    print("Worker A receives token 1:")
+    order.update_with_fencing_token(worker_name="Worker A", token=1, status="CREATED")
+    
+    print("Worker B receives token 2:")
+    order.update_with_fencing_token(worker_name="Worker B", token=2, status="PAID")
+    
+    print("Worker A tries to update with token 1 again:")
+    order.update_with_fencing_token(worker_name="Worker A", token=1, status="SHIPPED")
+    
+    order.print_state()
+    
     
 if __name__ == "__main__":
     main()
     missing_event_test()
+    stale_worker_test()
     
