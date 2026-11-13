@@ -59,6 +59,7 @@ class OrderState:
         print(f"Order ID: {self.order_id}")
         print(f"Status: {self.current_status}")
         print(f"Next Expected Version: {self.next_expected_version}")
+        print(f"Last Fencing Token: {self.last_fencing_token}")
         print(f"Pending Events: {sorted(self.pending_events.keys())}")
         print(f"Applied versions: {[event.version for event in self.history]}")
             
